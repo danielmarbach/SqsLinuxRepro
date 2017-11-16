@@ -28,7 +28,7 @@ namespace SqsRepro
             var client = new AmazonSQSClient(new AmazonSQSConfig {/*RegionEndpoint = RegionEndpoint.EUCentral1,*/ ServiceURL = "http://sqs.eu-central-1.amazonaws.com"});
             var queueUrl = await CreateQueue(client);
 
-            var concurrencyLevel = 16;
+            var concurrencyLevel = 2;
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
             var consumerTasks = new List<Task>();
