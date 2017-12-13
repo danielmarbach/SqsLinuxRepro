@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon;
+using Amazon.Internal;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 
@@ -25,22 +27,30 @@ namespace SqsRepro
 
         private static async Task DoMagic(int attempt)
         {
-            var client = new AmazonSQSClient(new AmazonSQSConfig {/*RegionEndpoint = RegionEndpoint.EUCentral1,*/ ServiceURL = "http://sqs.eu-central-1.amazonaws.com"});
-            var queueUrl = await CreateQueue(client);
+            var sendClient = new AmazonSQSClient(new AmazonSQSConfig {RegionEndpoint = RegionEndpoint.EUCentral1,/*ServiceURL =  "http://sqs.eu-central-1.amazonaws.com"*/});
+            var queueUrl = await CreateQueue(sendClient);
 
             var concurrencyLevel = 2;
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
-            var consumerTasks = new List<Task>();
+            
+            var consumerTasks = new List<Task>(concurrencyLevel);
+            var receivers = new List<IAmazonSQS>(concurrencyLevel);
 
             for (var i = 0; i < concurrencyLevel; i++)
             {
-                consumerTasks.Add(ConsumeMessage(client, queueUrl, i, cancellationTokenSource.Token));
+                var receiveClient = new AmazonSQSClient(new AmazonSQSConfig {RegionEndpoint = RegionEndpoint.EUCentral1,/*ServiceURL =  "http://sqs.eu-central-1.amazonaws.com"*/});
+                receivers.Add(receiveClient);
+                consumerTasks.Add(ConsumeMessage(receiveClient, queueUrl, i, cancellationTokenSource.Token));
             }
 
-            await Task.WhenAll(consumerTasks.Union(new[] {ProduceMessages(client, queueUrl, attempt, cancellationTokenSource.Token)}));
+            await Task.WhenAll(consumerTasks.Union(new[] {ProduceMessages(sendClient, queueUrl, attempt, cancellationTokenSource.Token)}));
 
-            client.Dispose();
+            foreach (var receiver in receivers)
+            {
+                receiver.Dispose();
+            }
+            sendClient.Dispose();
         }
 
         static async Task ProduceMessages(IAmazonSQS sqsClient, string queueUrl, int attempt, CancellationToken token)
