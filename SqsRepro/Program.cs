@@ -13,14 +13,6 @@ namespace SqsRepro
         static async Task Main(string[] args)
         {
             await DoMagic(1);
-
-            await DoMagic(2);
-
-            await DoMagic(3);
-
-            await DoMagic(4);
-
-            Console.ReadLine();
         }
 
         private static async Task DoMagic(int attempt)
