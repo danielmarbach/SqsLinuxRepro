@@ -51,7 +51,6 @@ namespace SqsRepro
 
             Console.WriteLine($"{DateTime.UtcNow} (Main) - Sending attempt {attempt} {1}");
             await sqsClient.SendMessageAsync(new SendMessageRequest(queueUrl, $"{dateTime} attempt {attempt} / {1}"));
-            await Task.Delay(1000);
             Console.WriteLine($"{DateTime.UtcNow} (Main) - Sent attempt {attempt} {1}");
         }
 
