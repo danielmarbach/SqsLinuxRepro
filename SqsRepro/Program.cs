@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 
@@ -25,7 +26,7 @@ namespace SqsRepro
 
         private static async Task DoMagic(int attempt)
         {
-            var client = new AmazonSQSClient(new AmazonSQSConfig {/*RegionEndpoint = RegionEndpoint.EUCentral1,*/ ServiceURL = "http://sqs.eu-central-1.amazonaws.com"});
+            var client = new AmazonSQSClient(new AmazonSQSConfig {RegionEndpoint = RegionEndpoint.EUWest1,/* ServiceURL = "http://sqs.eu-west-1.amazonaws.com"*/});
             var queueUrl = await CreateQueue(client);
 
             var concurrencyLevel = 2;
@@ -50,7 +51,11 @@ namespace SqsRepro
             var dateTime = DateTime.UtcNow;
 
             Console.WriteLine($"{DateTime.UtcNow} (Main) - Sending attempt {attempt} {1}");
-            await sqsClient.SendMessageAsync(new SendMessageRequest(queueUrl, $"{dateTime} attempt {attempt} / {1}"));
+            var sendMessageRequest = new SendMessageRequest(queueUrl, $"{dateTime} attempt {attempt} / {1}");
+            var messageDeduplicationId = Guid.NewGuid().ToString();
+            sendMessageRequest.MessageDeduplicationId = messageDeduplicationId;
+            sendMessageRequest.MessageGroupId = messageDeduplicationId;
+            await sqsClient.SendMessageAsync(sendMessageRequest);
             Console.WriteLine($"{DateTime.UtcNow} (Main) - Sent attempt {attempt} {1}");
         }
 
@@ -107,13 +112,14 @@ namespace SqsRepro
         {
             var sqsRequest = new CreateQueueRequest
             {
-                QueueName = "repro-queue"
+                QueueName = "repro-queue.fifo",
+                Attributes = new Dictionary<string, string> { { "FifoQueue", "true" } }
             };
             var createQueueResponse = await client.CreateQueueAsync(sqsRequest).ConfigureAwait(false);
             var queueUrl = createQueueResponse.QueueUrl;
             var sqsAttributesRequest = new SetQueueAttributesRequest
             {
-                QueueUrl = queueUrl
+                QueueUrl = queueUrl,
             };
             sqsAttributesRequest.Attributes.Add(QueueAttributeName.MessageRetentionPeriod,
                 TimeSpan.FromDays(4).TotalSeconds.ToString());
