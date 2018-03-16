@@ -113,7 +113,7 @@ namespace SqsRepro
             var sqsRequest = new CreateQueueRequest
             {
                 QueueName = "repro-queue.fifo",
-                Attributes = new Dictionary<string, string> { { "FifoQueue", "true" } }
+                Attributes = new Dictionary<string, string> { { QueueAttributeName.FifoQueue, "true" } }
             };
             var createQueueResponse = await client.CreateQueueAsync(sqsRequest).ConfigureAwait(false);
             var queueUrl = createQueueResponse.QueueUrl;
