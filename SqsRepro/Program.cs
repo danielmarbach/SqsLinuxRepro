@@ -30,7 +30,7 @@ namespace SqsRepro
 
             var concurrencyLevel = 2;
             var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+            cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(15));
             var consumerTasks = new List<Task>();
 
             for (var i = 0; i < concurrencyLevel; i++)
@@ -38,20 +38,20 @@ namespace SqsRepro
                 consumerTasks.Add(ConsumeMessage(client, queueUrl, i, cancellationTokenSource.Token));
             }
 
-            await Task.WhenAll(consumerTasks.Union(new[] {ProduceMessages(client, queueUrl, attempt, cancellationTokenSource.Token)}));
+            await Task.WhenAll(consumerTasks.Union(new[] {ProduceMessages(client, queueUrl, attempt)}));
 
             client.Dispose();
         }
 
-        static async Task ProduceMessages(IAmazonSQS sqsClient, string queueUrl, int attempt, CancellationToken token)
+        static async Task ProduceMessages(IAmazonSQS sqsClient, string queueUrl, int attempt)
         {
-            await Task.Delay(2000);
+            //await Task.Delay(2000);
 
             var dateTime = DateTime.UtcNow;
 
-            Console.WriteLine($"{DateTime.UtcNow} (Main) - Sending attempt {attempt} {1}");
-            await sqsClient.SendMessageAsync(new SendMessageRequest(queueUrl, $"{dateTime} attempt {attempt} / {1}"));
-            Console.WriteLine($"{DateTime.UtcNow} (Main) - Sent attempt {attempt} {1}");
+            Console.WriteLine($"{DateTime.UtcNow} (Main) - Sending attempt {attempt}");
+            await sqsClient.SendMessageAsync(new SendMessageRequest(queueUrl, $"{dateTime} attempt {attempt}"));
+            Console.WriteLine($"{DateTime.UtcNow} (Main) - Sent attempt {attempt}");
         }
 
         static async Task ConsumeMessage(IAmazonSQS sqsClient, string queueUrl, int pumpNumber, CancellationToken token)
