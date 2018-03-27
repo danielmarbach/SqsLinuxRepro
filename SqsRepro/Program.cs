@@ -74,6 +74,8 @@ namespace SqsRepro
                             },
                         },
                         token).ConfigureAwait(false);
+                        // use line below to make the issue disappear
+                        //CancellationToken.None).ConfigureAwait(false);
 
                     Console.WriteLine(
                         $"{DateTime.UtcNow} ({pumpNumber}) - Received {receiveResult.Messages.Count} / {receiveResult.HttpStatusCode} / {receiveResult.ContentLength}");
