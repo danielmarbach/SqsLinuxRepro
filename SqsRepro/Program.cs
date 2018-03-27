@@ -66,6 +66,12 @@ namespace SqsRepro
                             MaxNumberOfMessages = 10,
                             QueueUrl = queueUrl,
                             WaitTimeSeconds = 20,
+                            AttributeNames = new List<string>
+                            {
+                                "SentTimestamp",
+                                "ApproximateFirstReceiveTimestamp",
+                                "ApproximateReceiveCount"
+                            },
                         },
                         token).ConfigureAwait(false);
 
@@ -98,6 +104,17 @@ namespace SqsRepro
 
         private static async Task Consume(IAmazonSQS sqsClient, string queueUrl, int pumpNumber, Message message, CancellationToken token)
         {
+            var sent = UnixTimeConverter.FromUnixTimeMilliseconds(Convert.ToInt64(message.Attributes["SentTimestamp"]));
+            var received = UnixTimeConverter.FromUnixTimeMilliseconds(Convert.ToInt64(message.Attributes["ApproximateFirstReceiveTimestamp"]));
+
+            if (Convert.ToInt32(message.Attributes["ApproximateReceiveCount"]) > 1)
+            {
+                received = DateTimeOffset.UtcNow;
+            }
+
+            var elapsed = received - sent;
+
+            Console.WriteLine($"Elapsed '{elapsed}' ({pumpNumber}) - to receive message with body '{message.Body}'");
             Console.WriteLine($"{DateTime.UtcNow} ({pumpNumber}) - deleting {message.Body}");
             await sqsClient.DeleteMessageAsync(queueUrl, message.ReceiptHandle, CancellationToken.None).ConfigureAwait(false);
             Console.WriteLine($"{DateTime.UtcNow} ({pumpNumber}) - deleted {message.Body}");
@@ -121,5 +138,19 @@ namespace SqsRepro
             await client.SetQueueAttributesAsync(sqsAttributesRequest).ConfigureAwait(false);
             return queueUrl;
         }
+    }
+
+    static class UnixTimeConverter
+    {
+#if NET452
+        public static DateTimeOffset FromUnixTimeMilliseconds(long milliseconds)
+        {
+            return UnixEpoch.AddMilliseconds(milliseconds);
+        }
+
+        static readonly DateTimeOffset UnixEpoch = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
+#else
+        public static DateTimeOffset FromUnixTimeMilliseconds(long milliseconds) => DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
+#endif
     }
 }
